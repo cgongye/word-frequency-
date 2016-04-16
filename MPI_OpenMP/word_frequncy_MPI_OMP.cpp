@@ -163,8 +163,8 @@ int main (int argc,char **argv)
 	{
 		end_time = MPI_Wtime();
 		w_time = end_time - start_time;
-//		printf("Time used is: %e\n", w_time);
-		cout << w_time <<endl;
+		printf("Time used is: %e\n", w_time);
+//		cout << w_time <<endl;
 		//print
 		int a = wordCount.size();
 		map<string, int>::iterator it = wordCount.begin();
