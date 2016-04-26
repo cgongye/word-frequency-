@@ -34,10 +34,12 @@ int main (int argc,char **argv)
 
 	// allocate memory:
 	buffer = new char [length];
+	
 	// read data as a block
 	input.read (buffer, length);
 	input.close();
 	
+	// MPI section
 	MPI_Status status;
 	MPI_Init(&argc, &argv);
 	MPI_Barrier(MPI_COMM_WORLD);
@@ -46,26 +48,17 @@ int main (int argc,char **argv)
 	MPI_Comm_size(MPI_COMM_WORLD, &NP);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-		
+	// send data to all slaves
 	interval = length / NP + 1;
-
 	char * subbuffer = new char[interval];
-	
 	MPI_Scatter(buffer, interval, MPI_BYTE, subbuffer, interval, MPI_BYTE, 0, MPI_COMM_WORLD);
-	
-/* 	printf(" from %d\n",rank);		
-	int j = 0;
-	while (subbuffer[j] != NULL) {
-		printf("%c", subbuffer[j]);
-		j++;
-	}
-	printf("\n"); */
 	
 	string temp;
 	int convert;
 	string word = "";
 	map<string, int> subwordCount;
 	char breaked_word[30];
+	
 	// recive breaked word
 	if (rank != 0) {
 		MPI_Recv(&breaked_word, 30, MPI_BYTE, rank - 1, 0, MPI_COMM_WORLD, &status);
@@ -75,7 +68,6 @@ int main (int argc,char **argv)
 			word.append(temp);
 			x++;
 		}
-//		cout << "recived from " << rank -1 << " " << word << endl; 
 	}
 	
 	// send breaked word
@@ -98,8 +90,6 @@ int main (int argc,char **argv)
 	}
 	// count word into sub map
 	MPI_Barrier(MPI_COMM_WORLD);
-	#pragma omp barrier
-	#pragma omp parallel for private(word, convert, temp) lastprivate(subwordCount)
 	for (int i = 0; i < interval; i++) {
 		if (subbuffer[i] != NULL) {
 			convert = subbuffer[i];
@@ -108,16 +98,14 @@ int main (int argc,char **argv)
 				word.append(temp);
 			}
 			else if (word != "") {
-				#pragma omp atomic
 				++subwordCount[word];
-				//cout << word << endl;
 				word = "";
 			}				
 		}
 	}
-	#pragma omp barrier
 	MPI_Barrier(MPI_COMM_WORLD);
-
+	
+	// collect data back to host
 	int num_word = 0;	//number of word in host
 	int temp_sum = 0;	//result of reduce sum of each word
 	int sub_count = 0;	//number of word in each process
@@ -129,7 +117,6 @@ int main (int argc,char **argv)
 	MPI_Bcast(&num_word, 1, MPI_INT, 0, MPI_COMM_WORLD);
 	MPI_Barrier(MPI_COMM_WORLD);
 	
-	//cout << num_word << " " << rank << endl;
 	for (int i = 0; i < num_word; i++) {
 		if (rank == 0) {
 			strcpy(boadcast, (sit->first).c_str());
@@ -163,8 +150,8 @@ int main (int argc,char **argv)
 	{
 		end_time = MPI_Wtime();
 		w_time = end_time - start_time;
-		printf("Time used is: %e\n", w_time);
-//		cout << w_time <<endl;
+		cout << w_time <<endl;
+		
 		//print
 		int a = wordCount.size();
 		map<string, int>::iterator it = wordCount.begin();
@@ -174,7 +161,6 @@ int main (int argc,char **argv)
 			printf("%s : %d\n", (it->first).c_str(), it->second);
 			++it;
 		}
-		printf("The number of words is %d.\n",a);
 		delete[] buffer;
 	} 
 	
